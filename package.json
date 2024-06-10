@@ -1,0 +1,34 @@
+{
+  "name": "my-react-app",
+  "version": "1.0.0",
+  "description": "A simple React app with single file output",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "webpack --mode production"
+  },
+  "dependencies": {
+    "@babel/core": "^7.24.6",
+    "@babel/preset-env": "^7.24.6",
+    "@babel/preset-react": "^7.24.6",
+    "hyper-async": "^1.1.2",
+    "luaparse": "^0.3.1",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@permaweb/aoconnect": "^0.0.55",
+    "babel-loader": "^8.0.0",
+    "css-loader": "^6.0.0",
+    "express": "^4.19.2",
+    "html-inline-script-webpack-plugin": "^3.2.1",
+    "html-webpack-plugin": "^5.0.0",
+    "scheduler": "^0.23.2",
+    "style-loader": "^3.0.0",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^4.0.0",
+    "webpack-dev-middleware": "^7.2.1",
+    "webpack-dev-server": "^4.0.0",
+    "webpack-hot-middleware": "^2.26.1"
+  }
+}
