@@ -29,7 +29,7 @@ body { font-family: sans-serif; }
 
 .console-input {
     display: inline;
-    padding: 1rem 1rem 1rem 1rem;
+    padding: 1rem 0rem 1rem 0rem;
     margin: 0;
     font-family: monospace;
     border: 1px solid #555;
@@ -37,7 +37,7 @@ body { font-family: sans-serif; }
     background-color: #222;
     color: #eee;
     position: relative;
-    width: 78vw;
+    width: 100%;
 }
 
 .spinner-overlay {
