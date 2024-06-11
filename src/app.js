@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom';
-import { createRoot } from 'react-dom/client';
-import './index.css';
+import React, { useState, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
+import "./index.css";
 import { connect, message, createDataItemSigner } from "@permaweb/aoconnect";
-import luaparse from 'luaparse';
-import { register, evaluate } from './services.js';
+import luaparse from "luaparse";
+import { register, evaluate } from "./services.js";
 
 const LoadingSpinner = () => (
   <div className="spinner-overlay">
@@ -15,13 +15,10 @@ const LoadingSpinner = () => (
   </div>
 );
 
-
 const App = () => {
-  const { result, results, spawn, monitor, unmonitor, dryrun } = connect(
-    {
-      MU_URL: "https://ao-mu-1.onrender.com",
-    },
-  );
+  const { result, results, spawn, monitor, unmonitor, dryrun } = connect({
+    MU_URL: "https://ao-mu-1.onrender.com",
+  });
 
   const banner = `
           _____                   _______                   _____
@@ -47,14 +44,14 @@ const App = () => {
          \\/____/                                           \\/____/
     `;
 
-  const welcome = "Welcome to the ao Operating System."
-  const pid = "X22acRgedZXh-G0RnaJSjEIApyAzImmy3jDGiu0Lppo"
+  const welcome = "Welcome to the ao Operating System.";
+  const pid = "X22acRgedZXh-G0RnaJSjEIApyAzImmy3jDGiu0Lppo";
   const [loading, setLoading] = useState(false);
   const [walletAddress, setWalletAddress] = useState(null);
   const [process, setProcess] = useState(null);
   const [isArConnectInstalled, setIsArConnectInstalled] = useState(false);
   const [consoleOutput, setConsoleOutput] = useState([banner, welcome]);
-  const [prompt, setPrompt] = useState("aos>")
+  const [prompt, setPrompt] = useState("aos>");
   const [input, setInput] = useState("");
   const scrollableRef = useRef(null);
 
@@ -63,22 +60,24 @@ const App = () => {
       if (globalThis.arweaveWallet) {
         clearInterval(checkInterval);
         setIsArConnectInstalled(true);
-        window.arweaveWallet.connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION'])
+        window.arweaveWallet
+          .connect(["ACCESS_ADDRESS", "SIGN_TRANSACTION"])
           .then(() => window.arweaveWallet.getActiveAddress())
-          .then(address => {
+          .then((address) => {
             setWalletAddress(address);
-	    let ret = register(globalThis.arweaveWallet, address)
-	    console.log(ret)
-	    ret.toPromise()
-	      .then((pid) => {
-		setProcess(pid)
-	      })
-	      .catch((error) => {
-		console.error('Error:', error);
-	      });
+            let ret = register(globalThis.arweaveWallet, address);
+            console.log(ret);
+            ret
+              .toPromise()
+              .then((pid) => {
+                setProcess(pid);
+              })
+              .catch((error) => {
+                console.error("Error:", error);
+              });
           })
-          .catch(error => {
-            console.error('Error connecting to ArConnect', error);
+          .catch((error) => {
+            console.error("Error connecting to ArConnect", error);
           });
       }
     };
@@ -88,7 +87,6 @@ const App = () => {
     // Cleanup interval on component unmount
     return () => clearInterval(checkInterval);
   }, []);
-
 
   useEffect(() => {
     // Scroll to the bottom whenever consoleOutput changes
@@ -102,39 +100,39 @@ const App = () => {
   };
 
   const handleInput = async (e) => {
-    if (!process) return
-    if (e.key === 'Enter') {
-      setConsoleOutput(prev => [...prev, `${prompt} ${input}`]);
-      setLoading(true)
+    if (!process) return;
+    if (e.key === "Enter") {
+      setConsoleOutput((prev) => [...prev, `${prompt} ${input}`]);
+      setLoading(true);
       try {
-	evaluate(input, process, globalThis.arweaveWallet)
-	  .then((ret) => {
-	    console.log(ret)
-	    if (ret.Error || ret.error) {
-	      let error = ret.Error || ret.error
-	      setConsoleOutput(prev => [...prev, error]);
-	    }
-            if (ret.Output?.data?.output) {
-	      const ansiRegex = /\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]/g;
-              let r = String(ret.Output?.data?.output).replace(ansiRegex, '');
-	      console.log(r)
-	      setConsoleOutput(prev => [...prev, r]);
+        evaluate(input, process, globalThis.arweaveWallet)
+          .then((ret) => {
+            console.log(ret);
+            if (ret.Error || ret.error) {
+              let error = ret.Error || ret.error;
+              setConsoleOutput((prev) => [...prev, error]);
             }
-	    if (ret.Output?.prompt) {
-	      setPrompt(ret.Output.prompt)
-	    }
-	    // setConsoleOutput(prev => [...prev, ret]);
-	    setLoading(false)
-	  })
-	  .catch(err => {
-	    let e = JSON.stringify({ data: { output: err.message } })
-	    setConsoleOutput(prev => [...prev, e]);
-	    setLoading(false)
-	  })
+            if (ret.Output?.data?.output) {
+              const ansiRegex = /\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]/g;
+              let r = String(ret.Output?.data?.output).replace(ansiRegex, "");
+              console.log(r);
+              setConsoleOutput((prev) => [...prev, r]);
+            }
+            if (ret.Output?.prompt) {
+              setPrompt(ret.Output.prompt);
+            }
+            // setConsoleOutput(prev => [...prev, ret]);
+            setLoading(false);
+          })
+          .catch((err) => {
+            let e = JSON.stringify({ data: { output: err.message } });
+            setConsoleOutput((prev) => [...prev, e]);
+            setLoading(false);
+          });
       } catch (error) {
-	console.error(error)
-        setConsoleOutput(prev => [...prev, `Error: ${error.message}`]);
-	setLoading(false)
+        console.error(error);
+        setConsoleOutput((prev) => [...prev, `Error: ${error.message}`]);
+        setLoading(false);
       }
       setInput("");
     }
@@ -144,38 +142,35 @@ const App = () => {
     <div className="console">
       {loading && <LoadingSpinner />}
       <div className="info">
-	{walletAddress ? (
+        {walletAddress ? (
           <p>Wallet Address: {walletAddress}</p>
-	) : (
+        ) : (
           <p>Connecting to ArConnect...</p>
-	)}
-	{process ? (
-          <p>Your Process Id: {process}</p>
-	) : (
-          <p></p>
-	)}
-
+        )}
+        {process ? <p>Your Process Id: {process}</p> : <p></p>}
       </div>
-      <div className="console-output" ref={scrollableRef} >
+      <div className="console-output" ref={scrollableRef}>
         {consoleOutput.map((line, index) => (
-          <pre className="console-output-lines" key={index}>{line}</pre>
+          <pre className="console-output-lines" key={index}>
+            {line}
+          </pre>
         ))}
       </div>
       <div className="input">
-	<input
-	  disabled={loading}
+        <input
+          disabled={loading}
           type="text"
           className="console-input"
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleInput}
           placeholder={prompt}
-	/>
+        />
       </div>
     </div>
   );
 };
 
-const container = document.getElementById('root');
+const container = document.getElementById("root");
 const root = createRoot(container); // createRoot(container!) if you use TypeScript
 root.render(<App tab="home" />);

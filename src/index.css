@@ -1,85 +1,87 @@
-body { font-family: sans-serif; }
-
+body {
+  font-family: sans-serif;
+}
 
 .console {
-    font-family: monospace;
-    background-color: #333;
-    color: #eee;
-    border-radius: 5px;
-    width: 80vw;
-    height: 85vh;
-    margin: 0 auto;
+  font-family: monospace;
+  background-color: #333;
+  color: #eee;
+  border-radius: 5px;
+  width: 80vw;
+  height: 85vh;
+  margin: 0 auto;
 }
 
 .console-output {
-    height: 70vh;
-    overflow-y: auto;
-    padding: 3rem;
+  height: 70vh;
+  overflow-y: auto;
+  padding: 3rem;
 }
 
 .console-output-lines {
-    font-family: monospace;
-    font-size: 1rem;
-    line-height: 1;
-    overflow: auto;
-    padding: 1rem;
-    white-space: pre;
+  font-family: monospace;
+  font-size: 1rem;
+  line-height: 1;
+  overflow: auto;
+  padding: 1rem;
+  white-space: pre;
 }
 
-
 .console-input {
-    display: inline;
-    padding: 1rem 0rem 1rem 0rem;
-    margin: 0;
-    font-family: monospace;
-    border: 1px solid #555;
-    border-radius: 5px;
-    background-color: #222;
-    color: #eee;
-    position: relative;
-    width: 100%;
+  display: inline;
+  padding: 1rem 0rem 1rem 0rem;
+  margin: 0;
+  font-family: monospace;
+  border: 1px solid #555;
+  border-radius: 5px;
+  background-color: #222;
+  color: #eee;
+  position: relative;
+  width: 100%;
 }
 
 .spinner-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.1);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
 .spinner {
-    width: 20vh;
-    height: 20vh;
-    position: relative;
+  width: 20vh;
+  height: 20vh;
+  position: relative;
 }
 
-.double-bounce1, .double-bounce2 {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background-color: rgba(0, 0, 255, 0.5);
-    opacity: 0.6;
-    position: absolute;
-    top: 0;
-    left: 0;
-    animation: bounce 2.0s infinite ease-in-out;
+.double-bounce1,
+.double-bounce2 {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 255, 0.5);
+  opacity: 0.6;
+  position: absolute;
+  top: 0;
+  left: 0;
+  animation: bounce 2s infinite ease-in-out;
 }
 
 .double-bounce2 {
-    animation-delay: -1.0s;
+  animation-delay: -1s;
 }
 
 @keyframes bounce {
-    0%, 100% {
-        transform: scale(0);
-    }
-    50% {
-        transform: scale(1);
-    }
+  0%,
+  100% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1);
+  }
 }
