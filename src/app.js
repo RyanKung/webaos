@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { connect, message, createDataItemSigner } from "@permaweb/aoconnect";
-import luaparse from "luaparse";
 import { register, evaluate } from "./services.js";
+import { Terminal } from 'xterm';
+import 'xterm/css/xterm.css';
+import { FitAddon } from 'xterm-addon-fit';
 
 const LoadingSpinner = () => (
   <div className="spinner-overlay">
@@ -20,7 +22,7 @@ const App = () => {
     MU_URL: "https://ao-mu-1.onrender.com",
   });
 
-  const banner = `
+    const banner = `
           _____                   _______                   _____
          /\\    \\                 /::\\    \\                 /\\    \\
         /::\\    \\               /::::\\    \\               /::\\    \\
@@ -44,6 +46,7 @@ const App = () => {
          \\/____/                                           \\/____/
     `;
 
+
   const welcome = "Welcome to the ao Operating System.";
   const pid = "X22acRgedZXh-G0RnaJSjEIApyAzImmy3jDGiu0Lppo";
   const [loading, setLoading] = useState(false);
@@ -52,125 +55,116 @@ const App = () => {
   const [isArConnectInstalled, setIsArConnectInstalled] = useState(false);
   const [consoleOutput, setConsoleOutput] = useState([banner, welcome]);
   const [prompt, setPrompt] = useState("aos>");
-  const [input, setInput] = useState("");
-  const scrollableRef = useRef(null);
+  const [terminal, setTerminal] = useState(null);
+  const [fitAddon, setFitAddon] = useState(null);
+  const terminalRef = useRef(null);
+  const commandRef = useRef("");
 
   useEffect(() => {
-    const checkArConnect = () => {
+    const newTerminal = new Terminal();
+    const newFitAddon = new FitAddon();
+    newTerminal.loadAddon(newFitAddon);
+    newTerminal.open(terminalRef.current);
+    newFitAddon.fit();
+    banner.split("\n").forEach(line => newTerminal.writeln(line));
+    newTerminal.writeln("Welcome to the ao Operating System.");
+    setTerminal(newTerminal);
+    setFitAddon(newFitAddon);
+    checkArConnect(newTerminal);
+
+    return () => {
+      newTerminal.dispose();
+    };
+  }, []);
+
+  const checkArConnect = (term) => {
+    const checkInterval = setInterval(() => {
       if (globalThis.arweaveWallet) {
         clearInterval(checkInterval);
-        setIsArConnectInstalled(true);
+        term.writeln('ArConnect detected.');
         window.arweaveWallet
-          .connect(["ACCESS_ADDRESS", "SIGN_TRANSACTION"])
+          .connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION'])
           .then(() => window.arweaveWallet.getActiveAddress())
           .then((address) => {
             setWalletAddress(address);
-            let ret = register(globalThis.arweaveWallet, address);
-            console.log(ret);
-            ret
-              .toPromise()
-              .then((pid) => {
-                setProcess(pid);
-              })
-              .catch((error) => {
-                console.error("Error:", error);
-              });
+            term.writeln(`Wallet Address: ${address}`);
+            return register(globalThis.arweaveWallet, address);
+          })
+          .then((pid) => {
+	    pid
+	      .toPromise()
+	      .then((p) => {
+		setProcess(p);
+		term.writeln(`Your Process Id: ${p}`);
+	      })
           })
           .catch((error) => {
-            console.error("Error connecting to ArConnect", error);
+            term.writeln(`Error connecting to ArConnect: ${error.message}`);
           });
       }
-    };
-
-    const checkInterval = setInterval(checkArConnect, 1000);
-
-    // Cleanup interval on component unmount
-    return () => clearInterval(checkInterval);
-  }, []);
+    }, 1000);
+  };
 
   useEffect(() => {
-    // Scroll to the bottom whenever consoleOutput changes
-    if (scrollableRef.current) {
-      scrollableRef.current.scrollTop = scrollableRef.current.scrollHeight;
-    }
-  }, [consoleOutput]);
+    if (!terminal || !process) return;
+    const onDataHandler = data => handleInput(data);
+    terminal.onData(onDataHandler);
 
-  const handleInputChange = (e) => {
-    setInput(e.target.value);
-  };
+    return () => terminal.off('data', onDataHandler);
+  }, [terminal, process]);
 
-  const handleInput = async (e) => {
-    if (!process) return;
-    if (e.key === "Enter") {
-      setConsoleOutput((prev) => [...prev, `${prompt} ${input}`]);
-      setLoading(true);
-      try {
-        evaluate(input, process, globalThis.arweaveWallet)
+  const handleInput = useCallback((data) => {
+    console.log({data: data})
+    if (!terminal || !process) return;
+    if (!terminal) return;
+    let cmd = commandRef.current;
+    console.log({data: data, command: cmd})
+    if (data === '\r') { // Enter key
+      //	terminal.prompt();
+      console.log(1)
+      if (process) {
+	console.log(data, cmd)
+        terminal.write('\r\n');
+	commandRef.current = ""
+        evaluate(cmd, process, globalThis.arweaveWallet)
           .then((ret) => {
-            console.log(ret);
+	    console.log(ret)
             if (ret.Error || ret.error) {
-              let error = ret.Error || ret.error;
-              setConsoleOutput((prev) => [...prev, error]);
+	      let error = ret.Error || ret.error;
+	      terminal.writeln(`Error: ${error}`);
             }
             if (ret.Output?.data?.output) {
-              const ansiRegex = /\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]/g;
-              let r = String(ret.Output?.data?.output).replace(ansiRegex, "");
-              console.log(r);
-              setConsoleOutput((prev) => [...prev, r]);
+	      String(ret.Output.data.output).split("\n").forEach(line => terminal.writeln(line));
             }
             if (ret.Output?.prompt) {
-              setPrompt(ret.Output.prompt);
+	      terminal.write(ret.Output.prompt);
             }
-            // setConsoleOutput(prev => [...prev, ret]);
-            setLoading(false);
           })
-          .catch((err) => {
-            let e = JSON.stringify({ data: { output: err.message } });
-            setConsoleOutput((prev) => [...prev, e]);
-            setLoading(false);
+          .catch((error) => {
+            terminal.writeln(`Command error: ${error.message}`);
           });
-      } catch (error) {
-        console.error(error);
-        setConsoleOutput((prev) => [...prev, `Error: ${error.message}`]);
-        setLoading(false);
       }
-      setInput("");
+    } else if (data === '\x7F') {
+      if (cmd.length > 0) {
+        terminal.write('\b \b'); // Move cursor back, erase character, move cursor back again
+        cmd = cmd.slice(0, -1); // Remove last character from command buffer
+	commandRef.current = cmd
+      }
+    } else {
+      console.log(2)
+      cmd += data
+      commandRef.current = cmd
+      terminal.write(data);
     }
-  };
+  }, [terminal, process]);
 
   return (
-    <div className="console">
-      {loading && <LoadingSpinner />}
-      <div className="info">
-        {walletAddress ? (
-          <p>Wallet Address: {walletAddress}</p>
-        ) : (
-          <p>Connecting to ArConnect...</p>
-        )}
-        {process ? <p>Your Process Id: {process}</p> : <p></p>}
-      </div>
-      <div className="console-output" ref={scrollableRef}>
-        {consoleOutput.map((line, index) => (
-          <pre className="console-output-lines" key={index}>
-            {line}
-          </pre>
-        ))}
-      </div>
-      <div className="input">
-        <input
-          disabled={loading}
-          type="text"
-          className="console-input"
-          value={input}
-          onChange={handleInputChange}
-          onKeyDown={handleInput}
-          placeholder={prompt}
-        />
-      </div>
+    <div style={{ height: '100vh', width: '100vw' }}>
+      <div ref={terminalRef} style={{ width: '100%', height: '100%' }}></div>
     </div>
   );
 };
 
-const container = document.getElementById("root");
-const root = createRoot(container); // createRoot(container!) if you use TypeScript
-root.render(<App tab="home" />);
+const container = document.getElementById('root');
+const root = ReactDOM.createRoot(container);
+root.render(<App />);
