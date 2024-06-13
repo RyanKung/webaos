@@ -54,11 +54,37 @@ const App = () => {
   const [process, setProcess] = useState(null);
   const [isArConnectInstalled, setIsArConnectInstalled] = useState(false);
   const [consoleOutput, setConsoleOutput] = useState([banner, welcome]);
-  const [prompt, setPrompt] = useState("aos>");
+  const promptRef = useRef("aos>")
   const [terminal, setTerminal] = useState(null);
   const [fitAddon, setFitAddon] = useState(null);
   const terminalRef = useRef(null);
   const commandRef = useRef("");
+  const spinnerInterval = useRef(null);
+  const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  let spinnerIndex = 0;
+
+  const startSpinner = (term, text) => {
+    let terminal = term;
+    let t = text? text : " [Signing message and sequencing...]"
+    if (spinnerInterval.current) return; // Spinner is already running
+    const interval = setInterval(() => {
+      const currentFrame = spinnerFrames[spinnerIndex];
+      terminal.write('\r' + currentFrame + t);
+      spinnerIndex = (spinnerIndex + 1) % spinnerFrames.length;
+    }, 80);
+
+    spinnerInterval.current = interval
+  };
+  const stopSpinner = () => {
+    if (spinnerInterval.current) {
+      clearInterval(spinnerInterval.current);
+      spinnerInterval.current = null
+    }
+  };
+
+  const prompt = (term) => {
+    term.write(promptRef.current)
+  }
 
   useEffect(() => {
     const newTerminal = new Terminal();
@@ -74,13 +100,16 @@ const App = () => {
 
     return () => {
       newTerminal.dispose();
+      if (spinnerInterval) clearInterval(spinnerInterval);
     };
   }, []);
 
   const checkArConnect = (term) => {
+    startSpinner(term, " [ Waiting for arConnect]")
     const checkInterval = setInterval(() => {
       if (globalThis.arweaveWallet) {
         clearInterval(checkInterval);
+	term.writeln('\n')
         term.writeln('ArConnect detected.');
         window.arweaveWallet
           .connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION'])
@@ -96,7 +125,9 @@ const App = () => {
 	      .then((p) => {
 		setProcess(p);
 		term.writeln(`Your Process Id: ${p}`);
+		prompt(term)
 	      })
+	    stopSpinner()
           })
           .catch((error) => {
             term.writeln(`Error connecting to ArConnect: ${error.message}`);
@@ -114,31 +145,31 @@ const App = () => {
   }, [terminal, process]);
 
   const handleInput = useCallback((data) => {
-    console.log({data: data})
     if (!terminal || !process) return;
     if (!terminal) return;
     let cmd = commandRef.current;
-    console.log({data: data, command: cmd})
     if (data === '\r') { // Enter key
-      //	terminal.prompt();
-      console.log(1)
       if (process) {
-	console.log(data, cmd)
         terminal.write('\r\n');
 	commandRef.current = ""
+	prompt(terminal)
+	startSpinner(terminal)
         evaluate(cmd, process, globalThis.arweaveWallet)
           .then((ret) => {
-	    console.log(ret)
+	    stopSpinner()
             if (ret.Error || ret.error) {
 	      let error = ret.Error || ret.error;
 	      terminal.writeln(`Error: ${error}`);
+	      terminal.writeln("\n")
             }
             if (ret.Output?.data?.output) {
 	      String(ret.Output.data.output).split("\n").forEach(line => terminal.writeln(line));
+	      terminal.writeln("\n")
             }
             if (ret.Output?.prompt) {
-	      terminal.write(ret.Output.prompt);
+	      promptRef.current = ret.Output.prompt;
             }
+	    prompt(terminal)
           })
           .catch((error) => {
             terminal.writeln(`Command error: ${error.message}`);
@@ -151,7 +182,6 @@ const App = () => {
 	commandRef.current = cmd
       }
     } else {
-      console.log(2)
       cmd += data
       commandRef.current = cmd
       terminal.write(data);
