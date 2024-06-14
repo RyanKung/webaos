@@ -4,8 +4,9 @@ const HtmlInlineScriptPlugin = require("html-inline-script-webpack-plugin");
 const HtmlInlineCSSWebpackPlugin = require("html-inline-css-webpack-plugin").default;
 const webpack = require("webpack");
 
+
 module.exports = {
-  mode: "development",
+  mode: "production",
   entry: ["webpack-hot-middleware/client", "./src/index.js"],
   output: {
     filename: "bundle.js",
@@ -76,5 +77,5 @@ module.exports = {
   ],
   optimization: {
     minimize: true,
-  },
+  }
 };

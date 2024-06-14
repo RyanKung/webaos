@@ -33,7 +33,7 @@ ao.spawn(ao.env.Module.Id, {
     Data = $file,
     Tags = {
         {name = "App-Name", value = "Web AOS"},
-        {name = "App-Version", value = "0.1.0"},
+        {name = "App-Version", value = "0.2.0"},
         {name = "Content-Type", value = "text/html"},
         {name = "Title", value = "Web AOS"}
     }

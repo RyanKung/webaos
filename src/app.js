@@ -22,6 +22,12 @@ const App = () => {
   const { result, results, spawn, monitor, unmonitor, dryrun } = connect({
     MU_URL: "https://ao-mu-1.onrender.com",
   });
+  globalThis.utils = {
+    result: result,
+    results: results,
+    spawn: spawn,
+    dryrun: dryrun
+  }
 
     const banner = `
           _____                   _______                   _____
@@ -89,7 +95,6 @@ const App = () => {
   const startSpinner = (term, text) => {
     let terminal = term;
     let t = text? text : " [Signing message and sequencing...]"
-    if (spinnerInterval.current) return; // Spinner is already running
     const interval = setInterval(() => {
       const currentFrame = spinnerFrames[spinnerIndex];
       terminal.write("\r" + color("yellow", currentFrame + t));
@@ -158,9 +163,11 @@ const App = () => {
     keys(alerts.current).map(k => {
       if (alerts.current[k].print) {
 	alerts.current[k].print = false
-	term.writeln("\u001b[2K");
-	term.writeln("\u001b[0G" + alerts.current[k].data)
-	prompt(term)
+	if (alerts.current[k].data) {
+	  term.write("\u001b[2K");
+	  term.writeln("\u001b[0G" + alerts.current[k].data)
+	  prompt(term)
+	}
       }
     })
   };
@@ -277,6 +284,7 @@ const App = () => {
         evaluate(cmd, process, globalThis.arweaveWallet)
           .then((ret) => {
 	    stopSpinner()
+	    terminal.writeln("\n")
             if (ret.Error || ret.error) {
 	      let error = ret.Error || ret.error;
 	      terminal.writeln(`Error: ${error}`);
