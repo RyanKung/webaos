@@ -1,10 +1,11 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const HtmlInlineScriptPlugin = require("html-inline-script-webpack-plugin");
+const HtmlInlineCSSWebpackPlugin = require("html-inline-css-webpack-plugin").default;
 const webpack = require("webpack");
 
 module.exports = {
-  mode: "development", // Set the mode to 'development'
+  mode: "development",
   entry: ["webpack-hot-middleware/client", "./src/index.js"],
   output: {
     filename: "bundle.js",
@@ -23,7 +24,44 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: ["style-loader", "css-loader"],
+        use: [
+          "style-loader",
+          {
+            loader: "css-loader",
+            options: {
+              importLoaders: 1,
+            },
+          },
+          {
+            loader: "postcss-loader",
+            options: {
+              postcssOptions: {
+                plugins: [
+                  [
+                    "postcss-url",
+                    {
+                      url: "inline",
+                      maxSize: Infinity,
+                      fallback: "url-loader",
+                      encodeType: "base64",
+                    },
+                  ],
+                ],
+              },
+            },
+          },
+        ],
+      },
+      {
+        test: /\.(png|jpg|gif|svg)$/,
+        use: [
+          {
+            loader: 'url-loader',
+            options: {
+              limit: Infinity
+            },
+          },
+        ],
       },
     ],
   },
@@ -32,6 +70,7 @@ module.exports = {
       template: "./public/index.html",
       inject: "body",
     }),
+    new HtmlInlineCSSWebpackPlugin(),
     new HtmlInlineScriptPlugin(),
     new webpack.HotModuleReplacementPlugin(),
   ],

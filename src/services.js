@@ -70,11 +70,6 @@ export function spawnProcess({ wallet, src, tags, data }) {
   const signer = createDataItemSigner(wallet);
 
   tags = tags.concat([{ name: "aos-Version", value: VERSION }]);
-  console.log(src);
-  console.log(SCHEDULER);
-  console.log("signer", signer);
-  console.log("tags", tags);
-  console.log(data);
   return fromPromise(() =>
     spawn({
       module: src,

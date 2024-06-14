@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import { connect, message, createDataItemSigner } from "@permaweb/aoconnect";
+import { connect, message, createDataItemSigner, results } from "@permaweb/aoconnect";
 import { register, evaluate } from "./services.js";
 import { Terminal } from 'xterm';
 import 'xterm/css/xterm.css';
 import { FitAddon } from 'xterm-addon-fit';
+import { uniqBy, prop, keys } from 'ramda'
 
 const LoadingSpinner = () => (
   <div className="spinner-overlay">
@@ -60,8 +61,30 @@ const App = () => {
   const terminalRef = useRef(null);
   const commandRef = useRef("");
   const spinnerInterval = useRef(null);
+  const resultCheckerInterval = useRef(null);
+  const alerts = useRef({});
+  const cursor = useRef(null)
   const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  const [typing, setTyping] = useState(false)
+
+  const colors = {
+    black: '\x1b[30m',
+    red: '\x1b[31m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    blue: '\x1b[34m',
+    magenta: '\x1b[35m',
+    cyan: '\x1b[36m',
+    white: '\x1b[37m',
+    reset: '\x1b[0m',
+  };
+
   let spinnerIndex = 0;
+
+  function color(color, text) {
+    const colorCode = colors[color.toLowerCase()] || colors.reset;
+    return `${colorCode}${text}${colors.reset}`
+  }
 
   const startSpinner = (term, text) => {
     let terminal = term;
@@ -69,12 +92,13 @@ const App = () => {
     if (spinnerInterval.current) return; // Spinner is already running
     const interval = setInterval(() => {
       const currentFrame = spinnerFrames[spinnerIndex];
-      terminal.write('\r' + currentFrame + t);
+      terminal.write("\r" + color("yellow", currentFrame + t));
       spinnerIndex = (spinnerIndex + 1) % spinnerFrames.length;
     }, 80);
 
     spinnerInterval.current = interval
   };
+
   const stopSpinner = () => {
     if (spinnerInterval.current) {
       clearInterval(spinnerInterval.current);
@@ -82,17 +106,100 @@ const App = () => {
     }
   };
 
+  const checkResult = (pid, alerts, cursor) => {
+    try {
+      let count = null
+      let params = {}
+      if (cursor.current) {
+	params = { process: pid, limit: 1000, sort: "DESC", from: cursor.current }
+      } else {
+	params = { process: pid, limit: 1, sort: "DESC"}
+      }
+      results(params).then((ret) => {
+	let edges = uniqBy(prop('cursor'))(ret.edges.filter(function (e) {
+	  if (e.node?.Output?.print === true) {
+            return true
+	  }
+	  if (e.cursor === cursor.current) {
+            return false
+	  }
+	  return false
+	}));
+	if (edges.length > 0) {
+	  edges.map(e => {
+            if (!alerts.current[e.cursor]) {
+              alerts.current[e.cursor] = e.node?.Output
+            }
+	  })
+	}
+	count = edges.length
+	if (ret.edges.length > 0) {
+	  cursor.current = ret.edges[ret.edges.length - 1].cursor
+	}
+      }).catch((error) => {
+	console.error("error on fetching results", error)
+	// console.error("Validation Error Details:", error.errors);
+	error.errors.forEach((err, index) => {
+	  console.log(`Error ${index + 1}:`);
+	  console.log(`Path: ${err.path.join(" -> ")}`);
+	  console.log(`Message: ${err.message}`);
+	});
+      });
+
+      // --- peek on previous line and if delete line if last prompt.
+      // --- key event can detect
+      // count !== null &&
+    } catch (e) {
+      console.error(e)
+    }
+  };
+
+  const printResult = (term, alerts) => {
+    keys(alerts.current).map(k => {
+      if (alerts.current[k].print) {
+	alerts.current[k].print = false
+	term.writeln("\u001b[2K");
+	term.writeln("\u001b[0G" + alerts.current[k].data)
+	prompt(term)
+      }
+    })
+  };
+
+  const startCheckResult = (term, process) => {
+    if (resultCheckerInterval.current) return; // result checker is already running
+    const interval = setInterval(() => {
+      if (!typing) {
+	checkResult(process, alerts, cursor)
+	printResult(term, alerts)
+      }
+    }, 2000);
+    spinnerInterval.current = interval
+  };
+
+  const stopCheckResult = () => {
+    if (resultCheckerInterval.current) {
+      clearInterval(resultCheckerInterval.current);
+      resultCheckerInterval.current = null
+    }
+  };
+
   const prompt = (term) => {
-    term.write(promptRef.current)
+    term.write(color("red", promptRef.current))
   }
 
   useEffect(() => {
-    const newTerminal = new Terminal();
+    const newTerminal = new Terminal({
+      theme: {
+	background: 'rgba(33, 64, 46, 0.7)',
+	rows: 20,
+	cols: 70,
+      }
+    });
     const newFitAddon = new FitAddon();
     newTerminal.loadAddon(newFitAddon);
     newTerminal.open(terminalRef.current);
     newFitAddon.fit();
-    banner.split("\n").forEach(line => newTerminal.writeln(line));
+    banner.split("\n").forEach(line => newTerminal.writeln("\x1b[1m"+color("magenta", line)));
     newTerminal.writeln("Welcome to the ao Operating System.");
     setTerminal(newTerminal);
     setFitAddon(newFitAddon);
@@ -116,7 +223,7 @@ const App = () => {
           .then(() => window.arweaveWallet.getActiveAddress())
           .then((address) => {
             setWalletAddress(address);
-            term.writeln(`Wallet Address: ${address}`);
+            term.writeln(`Wallet Address: ${color("red", address)}`);
             return register(globalThis.arweaveWallet, address);
           })
           .then((pid) => {
@@ -124,7 +231,7 @@ const App = () => {
 	      .toPromise()
 	      .then((p) => {
 		setProcess(p);
-		term.writeln(`Your Process Id: ${p}`);
+		term.writeln(`Your Process Id: ${color("red", p)}`);
 		prompt(term)
 	      })
 	    stopSpinner()
@@ -140,11 +247,24 @@ const App = () => {
     if (!terminal || !process) return;
     const onDataHandler = data => handleInput(data);
     terminal.onData(onDataHandler);
-
     return () => terminal.off('data', onDataHandler);
   }, [terminal, process]);
 
+  useEffect(() => {
+    if (!terminal || !process) return;
+    startCheckResult(terminal, process)
+  }, [terminal, process]);
+
+  useEffect(() => {
+    if (typing) {
+      setTimeout(() => {
+	setTyping(false)
+      }, 60000)
+    }
+  }, [typing])
+
   const handleInput = useCallback((data) => {
+    setTyping(true)
     if (!terminal || !process) return;
     if (!terminal) return;
     let cmd = commandRef.current;
@@ -189,8 +309,8 @@ const App = () => {
   }, [terminal, process]);
 
   return (
-    <div style={{ height: '100vh', width: '100vw' }}>
-      <div ref={terminalRef} style={{ width: '100%', height: '100%' }}></div>
+    <div className="term">
+      <div className="crt" ref={terminalRef}></div>
     </div>
   );
 };
