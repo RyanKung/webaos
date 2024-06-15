@@ -124,10 +124,13 @@ export function register(wallet, address) {
       .map(path(["data", "transactions", "edges"]))
       .bichain(
         (_) => Rejected({ ok: false }),
-        (results) =>
-          results.length > 0
+        (results) => {
+          console.log("find process result", results);
+          console.log("name", name);
+          return results.length > 0
             ? Resolved(results.reverse())
-            : Rejected({ ok: true, wallet: jwk, address, name, spawnTags }),
+            : Rejected({ ok: true, wallet: wallet, address, name, spawnTags });
+        },
       );
   };
 
@@ -135,15 +138,13 @@ export function register(wallet, address) {
     let data = "1984";
     let tags = [
       { name: "App-Name", value: "aos" },
-      { name: "Name", value: "default" },
+      { name: "Name", value: name },
       {
         name: "Authority",
         value: "fcoN_xJeisVsPXA-trzVAuIiqO3ydLQxM-L4XbrQKzY",
       },
       ...(spawnTags || []),
     ];
-    console.info("spawn process")
-    console.info(tags)
     return spawnProcess({
       wallet: wallet,
       src: AOS_MODULE,
