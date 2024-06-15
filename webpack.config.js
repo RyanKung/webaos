@@ -6,7 +6,7 @@ const webpack = require("webpack");
 
 
 module.exports = {
-  mode: "production",
+  mode: "development",
   entry: ["webpack-hot-middleware/client", "./src/index.js"],
   output: {
     filename: "bundle.js",

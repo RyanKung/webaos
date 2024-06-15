@@ -132,18 +132,18 @@ export function register(wallet, address) {
   };
 
   const createProcess = ({ ok, wallet, address, name, spawnTags }) => {
-    console.log("name!!!", name);
     let data = "1984";
     let tags = [
       { name: "App-Name", value: "aos" },
-      { name: "Name", value: name },
+      { name: "Name", value: "default" },
       {
         name: "Authority",
         value: "fcoN_xJeisVsPXA-trzVAuIiqO3ydLQxM-L4XbrQKzY",
       },
       ...(spawnTags || []),
     ];
-
+    console.info("spawn process")
+    console.info(tags)
     return spawnProcess({
       wallet: wallet,
       src: AOS_MODULE,

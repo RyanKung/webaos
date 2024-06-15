@@ -92,6 +92,7 @@ const App = () => {
     return `${colorCode}${text}${colors.reset}`
   }
 
+
   const startSpinner = (term, text) => {
     let terminal = term;
     let t = text? text : " [Signing message and sequencing...]"
@@ -143,7 +144,6 @@ const App = () => {
 	}
       }).catch((error) => {
 	console.error("error on fetching results", error)
-	// console.error("Validation Error Details:", error.errors);
 	error.errors.forEach((err, index) => {
 	  console.log(`Error ${index + 1}:`);
 	  console.log(`Path: ${err.path.join(" -> ")}`);
@@ -231,7 +231,8 @@ const App = () => {
           .then((address) => {
             setWalletAddress(address);
             term.writeln(`Wallet Address: ${color("red", address)}`);
-            return register(globalThis.arweaveWallet, address);
+            let ret = register(globalThis.arweaveWallet, address);
+	    return ret
           })
           .then((pid) => {
 	    pid
@@ -241,6 +242,10 @@ const App = () => {
 		term.writeln(`Your Process Id: ${color("red", p)}`);
 		prompt(term)
 	      })
+	      .catch((error) => {
+		console.log("failed to get process", error)
+	      })
+
 	    stopSpinner()
           })
           .catch((error) => {
